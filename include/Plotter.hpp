@@ -34,7 +34,7 @@
 #include <numeric>
 
 #ifndef python
-  #define python "/usr/local/bin/ipython"
+  #define python "/usr/local/bin/python"
 #endif
 
 
@@ -55,10 +55,11 @@ class Plotter {
   PyObject *figure;
   PyObject *plot;
   PyObject *savefig;
+  PyObject *draw;
   PyObject *show;
+  PyObject *close;
 
-  std::string savedir;
-  PyObject *style_o;
+  std::vector<std::string> figures;
 
 public:
   /**
@@ -67,7 +68,7 @@ public:
    * @param cwd Current Working Directory
    * @param which_python Path to the python interpreter we want to use
    */
-  Plotter(std::string cwd, std::string which_python = python);
+  Plotter(std::string cwd = ".", std::string which_python = python);
 
   /**
    * Destructor - Decrefs python variables (hopefully to zero) and finalizes the interpreter.
@@ -85,6 +86,7 @@ private:
   std::vector<double> linspace(double start, double end, long num);
 
 public:
+
   /**
    * Plots the data!  Takes a map (dictionary) where the key is the format and a number to distinguish the entries
    * and the value is a tuple of vectors that represent x and y.  Throws assertion error if x and y are not the same
@@ -95,9 +97,33 @@ public:
    * @param s Whether to show the plot or not.  If true, then the plot is not saved to a file.  If false, the
    *          plot is saved to a file.
    */
-  void Plot(std::map<std::string, std::tuple<std::vector<double>, std::vector<double>>> data, std::string name = "", bool save = true);
+  void Plot(std::map<std::string, std::tuple<std::vector<double>, std::vector<double>>> data, std::string name);
 
-  void Plot(std::vector<double> ydata, std::string fmt = "o", std::string name = "", bool save = false);
+  /**
+   * Plots an input vector against a linspace in x.  Simplest version of the plot command, can be used to plot simple
+   * arrays for examples.
+   *
+   * @param ydata Input Y array
+   * @param fmt Format - check matplotlib.pyplot for acceptable formats
+   * @param name Name of the plot - required to keep track of everything
+   */
+  void Plot(std::vector<double> ydata, std::string name, std::string fmt = "o");
+
+  /**
+   * Shows all the figures created in one session of the plotter
+   */
+  void Show();
+
+  /**
+   * Allows selection of a specific figure to be saved to a file according to its name, or alternatively to save
+   * all the figures created in one session of the plotter to files.
+   *
+   * @param savedir Where to save the plot
+   * @param which Which plot to save
+   */
+  void Save(std::string savedir = "plots/", std::string which = "", std::string format = ".png");
+
+
 };
 
 

@@ -11,6 +11,9 @@ include_directories(${PYTHON_INCLUDE_DIR})
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++1y")
 
-set(SOURCE_FILES main.cpp src/Plotter.cpp include/Plotter.hpp)
-add_executable(multiplotter ${SOURCE_FILES})
+set(SOURCE_FILES src/Plotter.cpp include/Plotter.hpp)
+add_library(multiplotter SHARED ${SOURCE_FILES})
 target_link_libraries(multiplotter ${PYTHON_LIBRARY})
+
+add_executable(testing main.cpp)
+target_link_libraries(testing multiplotter)

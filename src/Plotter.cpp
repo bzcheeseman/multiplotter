@@ -24,49 +24,65 @@
 
 #include "../include/Plotter.hpp"
 
+/*
+ * CONSTRUCTOR/DESTRUCTOR
+ */
+
 Plotter::Plotter(std::string cwd, std::string which_python):
                   which_python(which_python), cwd(cwd) {
-    setenv("PYTHONPATH", cwd.c_str(), 1);
 
-    Py_SetProgramName((char *)which_python.c_str());
+  setenv("PYTHONPATH", cwd.c_str(), 1);
 
-    Py_Initialize();
+  Py_SetProgramName((char *)which_python.c_str());
 
-    PyObject *plt = PyImport_ImportModule("matplotlib.pyplot");
+  Py_Initialize();
 
-    if (PyErr_Occurred()){
-      PyErr_Print();
-    }
+  PyObject *plt = PyImport_ImportModule("matplotlib.pyplot");
 
-    figure = PyObject_GetAttrString(plt, "figure");
-    plot = PyObject_GetAttrString(plt, "plot");
-    savefig = PyObject_GetAttrString(plt, "savefig");
-    show = PyObject_GetAttrString(plt, "show");
+  if (PyErr_Occurred()){
+    PyErr_Print();
+  }
 
-    try{
-      check_callable(figure);
-      check_callable(plot);
-      check_callable(savefig);
-      check_callable(show);
-    }
-    catch(std::exception &e){
-      std::cout << e.what() << std::endl;
-    }
+  figure = PyObject_GetAttrString(plt, "figure");
+  plot = PyObject_GetAttrString(plt, "plot");
+  savefig = PyObject_GetAttrString(plt, "savefig");
+  draw = PyObject_GetAttrString(plt, "draw");
+  show = PyObject_GetAttrString(plt, "show");
+  close = PyObject_GetAttrString(plt, "close");
 
-    savedir = cwd + "/plots/";
+  try{
+    check_callable(figure);
+    check_callable(plot);
+    check_callable(savefig);
+    check_callable(show);
+    check_callable(draw);
+    check_callable(close);
+  }
+  catch(std::exception &e){
+    std::cout << e.what() << std::endl;
+  }
 
-    style_o = PyString_FromString("o");
 }
 
 Plotter::~Plotter() {
+
+  std::for_each(figures.begin(), figures.end(), [this](std::string fig){
+    PyObject *args = PyTuple_Pack(1, PyString_FromString(fig.c_str()));
+    PyObject_Call(figure, args, NULL);
+    args = PyTuple_Pack(0); PyObject_Call(close, args, NULL);
+  });
+
   Py_XDECREF(figure);
   Py_XDECREF(plot);
   Py_XDECREF(savefig);
   Py_XDECREF(show);
-  Py_XDECREF(style_o);
 
   Py_Finalize();
 }
+
+/*
+ * INTERNAL METHODS
+ */
 
 void Plotter::check_callable(PyObject *obj) {
   if (PyCallable_Check(obj)){
@@ -97,12 +113,14 @@ std::vector<double> Plotter::linspace(double start, double end, long num) {
 
 }
 
+/*
+ * EXTERNAL INTERFACES
+ */
+
 void Plotter::Plot(std::map<std::string, std::tuple<std::vector<double>, std::vector<double>>> data,
-                   std::string name, bool save) {
+                   std::string name) {
 
-  PyObject *args = PyTuple_Pack(0);
-
-  PyObject_Call(figure, args, NULL);
+  PyObject *args;
 
   for (auto iter = data.begin(); iter != data.end(); iter++){
     PyObject *x;
@@ -125,19 +143,18 @@ void Plotter::Plot(std::map<std::string, std::tuple<std::vector<double>, std::ve
 
     std::string fmt (iter->first.begin(), iter->first.end()-1);
 
+    args = PyTuple_Pack(1, PyString_FromString(name.c_str()));
+    PyObject_Call(figure, args, NULL);
+    figures.push_back(name);
+    Py_XDECREF(args);
+
     args = PyTuple_Pack(3, x, y, PyString_FromString(fmt.c_str()));
     PyObject_Call(plot, args, NULL);
+    Py_XDECREF(args);
 
     Py_CLEAR(x);
     Py_CLEAR(y);
-  }
 
-  args = PyTuple_Pack(0);
-  PyObject_Call(show, args, NULL);
-
-  if (save){
-    args = PyTuple_Pack(1, PyString_FromString((savedir+name).c_str()));
-    PyObject_Call(savefig, args, NULL);
   }
 
 
@@ -145,14 +162,68 @@ void Plotter::Plot(std::map<std::string, std::tuple<std::vector<double>, std::ve
 
 }
 
-void Plotter::Plot(std::vector<double> ydata, std::string fmt, std::string name, bool save) {
+void Plotter::Plot(std::vector<double> ydata, std::string name, std::string fmt) {
 
   std::map<std::string, std::tuple<std::vector<double>, std::vector<double>>> data;
 
   data[fmt+"1"] = std::make_tuple(linspace(0, ydata.size(), ydata.size()), ydata);
 
-  Plot(data, name, save);
-
+  Plot(data, name);
 }
+
+void Plotter::Show() {
+
+  PyObject *args;
+
+  args = PyTuple_Pack(0);
+  PyObject_Call(show, args, NULL);
+
+  Py_XDECREF(args);
+}
+
+void Plotter::Save(std::string savedir, std::string which, std::string format) {
+  PyObject *args = PyTuple_Pack(0);
+
+  auto found = std::find(figures.begin(), figures.end(), which);
+
+  if (found != figures.end()) {
+    //Pick the plot to save - pull up that figure
+    args = PyTuple_Pack(1, PyString_FromString(which.c_str()));
+    PyObject_Call(figure, args, NULL);
+
+    if ((*savedir.end()) == '/'){
+      args = PyTuple_Pack(1, PyString_FromString((savedir+(*found)+format).c_str()));
+      PyObject_Call(savefig, args, NULL);
+    }
+    else{
+      args = PyTuple_Pack(1, PyString_FromString((savedir+"/"+(*found)+format).c_str()));
+      PyObject_Call(savefig, args, NULL);
+    }
+  }
+  else if (found == figures.end() and which != ""){
+    std::cout << "Plot not found!  Double check your selection." << std::endl;
+  }
+  else{
+    for (auto iter = figures.begin(); iter != figures.end(); iter++){
+
+      args = PyTuple_Pack(1, PyString_FromString((*iter).c_str()));
+      PyObject_Call(figure, args, NULL);
+
+      if ((*savedir.end()) == '/'){
+        args = PyTuple_Pack(1, PyString_FromString((savedir+(*iter)+format).c_str()));
+        PyObject_Call(savefig, args, NULL);
+      }
+      else {
+        args = PyTuple_Pack(1, PyString_FromString((savedir+"/"+(*iter)+format).c_str()));
+        PyObject_Call(savefig, args, NULL);
+      }
+    }
+  }
+  Py_XDECREF(args);
+}
+
+
+
+
 
 
