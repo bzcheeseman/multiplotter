@@ -48,7 +48,7 @@
  * @class Plotter
  * @brief Holds the methods associated with plotting points.
  *
- * This class holds all the methods associated with calling the matplotlib library and using it to plot 
+ * This class holds all the methods associated with calling the matplotlib library and using it to plot
  * data generated or accessed by C++ code.
  */
 class Plotter {
@@ -86,6 +86,15 @@ private:
    */
   void check_callable(PyObject *obj);
 
+  /**
+   * Generates a linspace much like the numpy linspace command.  Given a start, end, and number of points, this
+   * returns a vector of points that are evenly spaced in the interval [start, end].
+   *
+   * @param start
+   * @param end
+   * @param num
+   * @return
+   */
   std::vector<double> linspace(double start, double end, long num);
 
 public:
