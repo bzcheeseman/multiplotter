@@ -46,7 +46,10 @@
 
 /**
  * @class Plotter
- * @brief Holds the methods associated with plotting points.  Quite general, should allow re-use in subsequent projects.
+ * @brief Holds the methods associated with plotting points.
+ *
+ * This class holds all the methods associated with calling the matplotlib library and using it to plot 
+ * data generated or accessed by C++ code.
  */
 class Plotter {
   std::string cwd;

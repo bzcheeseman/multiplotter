@@ -21,6 +21,10 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+/**
+ * @file include/Plotter.cpp
+ * @brief Defines members of the Plotter class.
+ */
 
 #include "../include/Plotter.hpp"
 
